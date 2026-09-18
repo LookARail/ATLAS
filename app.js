@@ -4,6 +4,7 @@
 // Locations with blank mileage are intentionally absent and are not plotted.
 const STATION_POSITIONS = {
   MONMONINT: 74,
+  MONTASYAR: 8.9,
   PONVICTOR: 72.31,
   STLAMBERT: 71.2,
   STBRUNO: 63.8,
@@ -53,6 +54,7 @@ const STATION_POSITIONS = {
   STHENRY: 4.8,
   MAITLAND: 122.7,
   PTUNION: 319.7,
+  LIVERPOOL: 315,
   VILLEMOYN: 70.2,
   LYN: 127.4,
 };
@@ -67,7 +69,7 @@ const STATION_SUBDIVISIONS = {
   ERNESTOWN: "Kingston", COLBAY: "Kingston", QUEENS: "Kingston", KINGS: "Kingston", LEEDS: "Kingston",
   MALLORYTO: "Kingston", BROCKVILL: "Kingston", PRESCOTT: "Kingston", GALOP: "Kingston", MORRISBUR: "Kingston",
   CRYSLER: "Kingston", REGIS: "Kingston", GARRY: "Kingston", COTEAU: "Kingston", CEDARS: "Kingston",
-  DORVAL: "Kingston", "55IAVE": "Kingston", OSHAWA: "Kingston", TREJCT: "Kingston", CARDINAL: "Kingston",
+  DORVAL: "Kingston", MONTASYAR: "Kingston", LIVERPOOL: "Kingston", "55IAVE": "Kingston", OSHAWA: "Kingston", TREJCT: "Kingston", CARDINAL: "Kingston",
   CORNWALL: "Kingston", KINGSTON: "Kingston", RIVBEAUDE: "Kingston", STHENRY: "Kingston", MAITLAND: "Kingston",
   PTUNION: "Kingston", LYN: "Kingston",
 };
