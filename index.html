@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Explore Kingston corridor train paths and passenger trip-time statistics from a CSV." />
+    <title>Rail Operations Viewer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="masthead">
+        <div>
+          <h1>Rail Operations Viewer</h1>
+        </div>
+      </header>
+
+      <div class="workspace-layout">
+        <aside class="control-rail" aria-label="Analysis controls">
+          <section class="rail-card file-card">
+            <p class="section-kicker">Data file</p>
+            <div class="file-zone" id="fileZone">
+              <input id="csvFile" type="file" accept=".csv,text/csv" />
+              <label for="csvFile">
+                <span class="file-action">Choose CSV</span>
+                <span id="fileName">or drop the Data-tab export here</span>
+              </label>
+            </div>
+            <p id="fileError" class="file-error" role="alert" hidden></p>
+          </section>
+
+          <section class="rail-card feature-controls hidden" data-view-controls="stringline">
+            <h2>Time-Distance Diagram</h2>
+            <div class="rail-section">
+              <p class="section-kicker">Date range</p>
+              <label class="field"><span>Service date from</span><input id="startDate" type="date" disabled /></label>
+              <label class="field"><span>Service date to</span><input id="endDate" type="date" disabled /></label>
+            </div>
+            <div class="rail-section">
+              <p class="section-kicker">Display</p>
+              <label class="field"><span title="Normalized date groups repeated paths across the selected dates. Calendar date preserves each trip chronologically.">Date mode</span><select id="dateMode" disabled><option value="normalized" selected>Normalized date</option><option value="calendar">Calendar date</option></select></label>
+              <label class="field"><span title="Choose which mapped subdivision is shown in the diagram and heat map.">Subdivision</span><select id="subdivisionFilter" disabled><option value="Kingston">Kingston</option><option value="St-Hyacinthe">St-Hyacinthe</option></select></label>
+              <label class="field"><span title="Actual event times come from EVT_TMSTMP. Reconstructed schedule subtracts signed LATE_HOURS from those timestamps.">Time source</span><select id="timeBasis" disabled><option value="scheduled">Reconstructed schedule</option><option value="actual" selected>Actual event times</option></select></label>
+              <label class="field"><span>Search train ID</span><input id="trainSearch" type="search" placeholder="e.g. L518 or P038" disabled aria-describedby="trainSearchNote" /><small id="trainSearchNote">Highlights train IDs beginning with this text.</small></label>
+            </div>
+            <button id="plotButton" type="button" disabled>Generate diagram</button>
+            <p class="rail-note" title="Normalized date collapses repeated paths using a fixed 5-minute matching tolerance. Calendar date plots every selected trip chronologically, with actual solid and reconstructed schedule dashed.">Hover field labels for help.</p>
+          </section>
+
+          <section class="rail-card feature-controls hidden" data-view-controls="statistics">
+            <h2>Passenger Statistics</h2>
+            <div class="rail-section">
+              <p class="section-kicker">Origin → destination</p>
+              <label class="field"><span title="Select one or more observed passenger origin-destination pairs. Hold Ctrl or Cmd to select multiple pairs.">Observed passenger OD pairs</span><select id="odPair" multiple size="6" disabled aria-describedby="odPairNote"></select><small id="odPairNote">Ctrl/Cmd-click to choose multiple pairs.</small></label>
+            </div>
+            <p class="rail-note" title="The histogram uses passenger trips only. Scheduled travel time is reconstructed from the actual event time and signed schedule deviation.">Passenger-only trip-time distributions.</p>
+          </section>
+        </aside>
+
+        <section class="workspace" id="workspace" aria-label="Analysis workspace" hidden>
+          <nav class="view-tabs" role="tablist" aria-label="Analysis views">
+            <button class="view-tab active" id="stringlineTab" type="button" role="tab" aria-selected="true" aria-controls="stringlinePanel" data-view="stringline">Time-distance Diagram</button>
+            <button class="view-tab" id="statisticsTab" type="button" role="tab" aria-selected="false" aria-controls="statisticsPanel" data-view="statistics">Passenger Statistics</button>
+          </nav>
+
+          <section class="view-panel" id="stringlinePanel" data-view-panel="stringline" role="tabpanel" aria-labelledby="stringlineTab">
+            <div class="summary-strip" aria-live="polite"><div><strong id="tripCount">—</strong><span>observed trips</span></div><div><strong id="pathCount">—</strong><span>distinct paths</span></div><div><strong id="collapsedCount">—</strong><span>grouped repeats</span></div><div><strong id="stationCount">—</strong><span>mapped locations</span></div></div>
+            <section class="chart-card" aria-label="Time-distance diagram">
+              <div class="chart-toolbar"><div><p class="section-kicker">Output</p><h2>Time-distance diagram</h2><p id="chartSubtitle">Load a CSV to begin.</p></div><div class="chart-legend-group"><div class="legend" id="legend" aria-label="Train family legend"></div><div class="line-style-legend" id="lineStyleLegend" aria-label="Line style legend"></div></div></div>
+              <div class="chart-wrap" id="chartWrap"><canvas id="stringlineCanvas" role="img" aria-label="Train time-distance stringline chart"></canvas><div class="empty-state" id="emptyState"><div class="empty-mark" aria-hidden="true"></div><strong>Waiting for train history</strong><span>The CSV should contain the columns from the workbook’s Data tab.</span></div><div class="tooltip" id="tooltip" hidden></div></div>
+            </section>
+            <section class="heatmap-card" aria-label="Traffic density heat map">
+              <div class="chart-toolbar"><div><p class="section-kicker">Output</p><h2>Traffic density heat map</h2><p id="heatmapSubtitle">Load a CSV to estimate where trains were present most often.</p></div><div class="heatmap-legend" aria-label="Heat map legend"><span><i class="heatmap-swatch passenger"></i>Passenger</span><span><i class="heatmap-swatch freight"></i>Freight</span><span><i class="heatmap-swatch empty"></i>No traffic</span></div></div>
+              <div class="heatmap-wrap" id="heatmapWrap"><canvas id="trafficHeatmapCanvas" role="img" aria-label="Traffic density heat map by time and corridor position"></canvas><div class="empty-state" id="heatmapEmpty"><strong>No traffic-density data</strong><span>Load a CSV to build the interpolated traffic heat map.</span></div></div>
+            </section>
+          </section>
+
+          <section class="view-panel" id="statisticsPanel" data-view-panel="statistics" role="tabpanel" aria-labelledby="statisticsTab" hidden>
+            <section class="histogram-card" aria-label="Passenger trip-time distribution">
+              <div class="chart-toolbar"><div><p class="section-kicker">Output</p><h2>Passenger trip-time distribution</h2><p id="histogramSubtitle">Load a CSV and choose passenger origin-destination pairs.</p></div><div class="histogram-legend" aria-label="Histogram legend"><span><i class="histogram-swatch scheduled"></i>Scheduled</span><span><i class="histogram-swatch actual"></i>Actual</span></div></div>
+              <div class="histogram-wrap" id="histogramWrap"><canvas id="tripTimeCanvas" role="img" aria-label="Histogram comparing scheduled and actual passenger travel times"></canvas><div class="empty-state" id="histogramEmpty"><strong>No passenger trip-time data</strong><span>Load a CSV and choose one or more passenger origin-destination pairs.</span></div></div>
+            </section>
+            <section class="stats-table-card" aria-label="Final lateness distribution">
+              <div class="stats-table-heading"><div><p class="section-kicker">Distribution</p><h2>Final lateness</h2></div><span id="latenessTableSummary">No data</span></div>
+              <div class="table-scroll"><table class="stats-table"><thead><tr><th scope="col">Final lateness</th><th scope="col">Trips</th><th scope="col">Share</th></tr></thead><tbody id="latenessTableBody"></tbody></table></div>
+            </section>
+            <section class="stats-table-card" aria-label="Passenger travel-time variability">
+              <div class="stats-table-heading"><div><p class="section-kicker">Travel time variability</p><h2>Actual travel time distribution</h2></div><span id="travelTimeSummary">No data</span></div>
+              <div class="table-scroll"><table class="stats-table"><thead><tr><th scope="col">Passenger trip</th><th scope="col">Origin–destination</th><th scope="col">Observations</th><th scope="col">Actual P5</th><th scope="col">Actual median</th><th scope="col">Actual P95</th><th scope="col">Actual standard deviation</th><th scope="col">Average scheduled</th><th scope="col">Average lateness</th></tr></thead><tbody id="travelTimeTableBody"></tbody></table></div>
+            </section>
+          </section>
+
+          <details class="data-notes"><summary>CSV assumptions and measurement details</summary><div><p>Passenger statistics use <code>TRN_TYPE = P</code>. Actual trip time is measured between the selected trip’s first departure event and final arrival event at the observed endpoint stations.</p><p>Scheduled event time is reconstructed as actual event time minus signed <code>LATE_HOURS</code>. The CSV contains a service date and schedule deviations, but not a separate scheduled timestamp.</p></div></details>
+        </section>
+      </div>
+    </main>
+    <script src="app.js" defer></script>
+  </body>
+</html>

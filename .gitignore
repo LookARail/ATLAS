@@ -1,0 +1,17 @@
+# Raw/source datasets and internal reference material
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.pdf
+*.pptx
+
+# Internal notes and generated reports
+*-handoff.md
+train_timetable_report*.html
+
+# Local/editor/system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
