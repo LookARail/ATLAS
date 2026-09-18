@@ -635,8 +635,8 @@ button:focus-visible,
 
 .heatmap-wrap {
   position: relative;
-  min-height: 390px;
-  height: 390px;
+  min-height: 600px;
+  height: 600px;
   padding: 8px 12px 12px;
 }
 

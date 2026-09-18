@@ -271,7 +271,7 @@ function updateDateModeControls() {
   const calendarMode = els.dateMode.value === "calendar" || els.startDate.value === els.endDate.value;
   const disabled = !state.records.length || calendarMode;
   els.timeBasis.disabled = disabled;
-  renderLineStyleLegend(calendarMode);
+  renderLineStyleLegend(calendarMode, !calendarMode && els.timeBasis.value === "actual");
 }
 
 async function loadCsvFile(file) {
@@ -390,7 +390,12 @@ function generatePlot() {
       .sort((a, b) => a.serviceDate.localeCompare(b.serviceDate) || a.tripId.localeCompare(b.tripId));
     if (!trips.length) throw new Error("No plottable trips were found in this date range.");
 
-    const variants = calendarMode ? decorateCalendarTrips(trips) : deduplicateTrips(trips, tolerance);
+    const ungroupedActual = !calendarMode && basis === "actual";
+    const variants = calendarMode
+      ? decorateCalendarTrips(trips)
+      : ungroupedActual
+        ? expandIndividualTrips(trips)
+        : deduplicateTrips(trips, tolerance);
     const compareBoth = calendarMode;
     let actualVariants = null;
     let scheduledVariants = null;
@@ -406,7 +411,7 @@ function generatePlot() {
     }
     const stationModel = buildStationModel(compareBoth ? [...actualVariants, ...scheduledVariants] : variants);
     if (!stationModel.length) throw new Error("No stations with explicit mileage were found for the selected data.");
-    const model = { variants, actualVariants, scheduledVariants, compareBoth, calendarMode, stationModel, start, end, basis, tripInstances: trips.length };
+    const model = { variants, actualVariants, scheduledVariants, compareBoth, calendarMode, ungroupedActual, stationModel, start, end, basis, tripInstances: trips.length };
     state.renderModel = model;
     state.hoveredTripKey = null;
     setTimelineWindow(model);
@@ -416,14 +421,14 @@ function generatePlot() {
     els.collapsedCount.textContent = (trips.length - variants.length).toLocaleString();
     els.stationCount.textContent = stationModel.length.toLocaleString();
     const sourceLabel = calendarMode ? "calendar chronology · actual solid + reconstructed schedule dashed" : basis === "scheduled" ? "normalized reconstructed schedule" : "normalized actual event times";
-    const matchingLabel = calendarMode ? "no trip matching" : `${tolerance}-minute matching`;
+    const matchingLabel = calendarMode || ungroupedActual ? "no trip matching" : `${tolerance}-minute matching`;
     els.chartSubtitle.textContent = `${formatDisplayDate(start)}–${formatDisplayDate(end)} · ${sourceLabel} · ${state.subdivision} subdivision · ${matchingLabel}`;
     els.emptyState.hidden = true;
     renderLegend(compareBoth ? [...actualVariants, ...scheduledVariants] : variants);
     drawChart(model);
     drawTrafficHeatmap(start, end);
     generatePassengerHistogram(start, end);
-    setStatus(`${variants.length.toLocaleString()} ${calendarMode ? "trips" : "paths"} plotted`, "ready");
+    setStatus(`${variants.length.toLocaleString()} ${calendarMode || ungroupedActual ? "trips" : "paths"} plotted`, "ready");
   } catch (error) {
     console.error(error);
     setDataReady(false);
@@ -973,6 +978,16 @@ function decorateCalendarTrips(trips) {
   });
 }
 
+function expandIndividualTrips(trips) {
+  return trips.map((trip) => ({
+    ...trip,
+    displayName: trip.tripId,
+    variantIndex: 0,
+    repeatCount: 1,
+    dates: [trip.serviceDate],
+  }));
+}
+
 function deduplicateTrips(trips, tolerance) {
   const byName = new Map();
   for (const trip of trips) {
@@ -1075,7 +1090,7 @@ function drawChart(model) {
     drawVariantSet(ctx, model.scheduledVariants, stationLookup, xScale, yScale, plot, { scheduled: true, showLabels: false, continuous: model.calendarMode });
     drawVariantSet(ctx, model.actualVariants, stationLookup, xScale, yScale, plot, { scheduled: false, showLabels: true, continuous: model.calendarMode });
   } else {
-    drawVariantSet(ctx, model.variants, stationLookup, xScale, yScale, plot, { scheduled: model.basis === "scheduled", showLabels: true, continuous: false });
+    drawVariantSet(ctx, model.variants, stationLookup, xScale, yScale, plot, { scheduled: model.basis === "scheduled", showLabels: !model.ungroupedActual, continuous: false });
   }
   ctx.restore();
   ctx.globalAlpha = 1;
@@ -1389,10 +1404,12 @@ function renderLegend(variants) {
     .join("");
 }
 
-function renderLineStyleLegend(calendarMode) {
+function renderLineStyleLegend(calendarMode, ungroupedActual = false) {
   if (!els.lineStyleLegend) return;
   els.lineStyleLegend.innerHTML = calendarMode
     ? '<span><i class="line-style-swatch actual"></i>Actual</span><span><i class="line-style-swatch scheduled"></i>Scheduled</span>'
+    : ungroupedActual
+      ? '<span><i class="line-style-swatch actual"></i>Actual event times · individual trips</span>'
     : '<span><i class="line-style-swatch actual"></i>Most common pattern</span><span><i class="line-style-swatch scheduled"></i>Variant pattern</span>';
 }
 
