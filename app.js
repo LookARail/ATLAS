@@ -153,14 +153,19 @@ const state = {
 };
 
 function setDataReady(ready) {
-  els.workspace.hidden = !ready;
+  // Keep the analysis shell visible while waiting for data so the user sees
+  // the available views and their empty states. Only the file picker remains
+  // usable until a valid CSV has been loaded.
+  els.workspace.hidden = false;
   for (const tab of els.viewTabs) {
     tab.disabled = !ready;
     tab.setAttribute("aria-disabled", String(!ready));
   }
   if (!ready) {
-    for (const panel of els.viewPanels) panel.hidden = true;
-    for (const controls of els.viewControls) controls.classList.add("hidden");
+    for (const element of [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair]) {
+      element.disabled = true;
+    }
+    setActiveView("stringline");
     return;
   }
   setActiveView("stringline");
