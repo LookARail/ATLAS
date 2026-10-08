@@ -441,7 +441,7 @@ function generatePlot() {
 function buildPassengerTrips() {
   const grouped = new Map();
   for (const row of state.records) {
-    if (value(row, "TRN_TYPE").trim().toUpperCase() !== "P") continue;
+    if (getTrainType(row) !== "P") continue;
     const tripId = value(row, "TRN_ID").trim();
     if (!tripId) continue;
     if (!grouped.has(tripId)) grouped.set(tripId, []);
