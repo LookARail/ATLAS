@@ -2,11 +2,11 @@
 
 // Editable display aliases. Source codes remain the internal location keys.
 const STATION_ALIASES = {
-  BROPASSEN: "Brockville passenger station",
-  TORUNION: "Toronto Union Station",
-  MONCENSTA: "Montréal Central Station",
-  COTPASSEN: "Coteau passenger station",
-  STROSJCT: "Sainte-Rosalie Junction",
+  BROPASSEN: "Brockville Jct",
+  TORUNION: "Toronto Union",
+  MONCENSTA: "Montréal Central",
+  COTPASSEN: "Coteau Jct",
+  STROSJCT: "Sainte-Rosalie Jct",
 };
 
 function stationDisplayName(sourceCode) {
