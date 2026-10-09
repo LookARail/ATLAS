@@ -121,6 +121,11 @@ const els = {
   tripTimeCanvas: document.querySelector("#tripTimeCanvas"),
   histogramWrap: document.querySelector("#histogramWrap"),
   histogramEmpty: document.querySelector("#histogramEmpty"),
+  latenessMode: document.querySelector("#latenessMode"),
+  latenessCanvas: document.querySelector("#latenessCanvas"),
+  latenessHistogramWrap: document.querySelector("#latenessHistogramWrap"),
+  latenessHistogramEmpty: document.querySelector("#latenessHistogramEmpty"),
+  latenessHistogramSubtitle: document.querySelector("#latenessHistogramSubtitle"),
   latenessTableBody: document.querySelector("#latenessTableBody"),
   latenessTableSummary: document.querySelector("#latenessTableSummary"),
   travelTimeTableBody: document.querySelector("#travelTimeTableBody"),
@@ -164,7 +169,7 @@ function setDataReady(ready) {
     tab.setAttribute("aria-disabled", String(!ready));
   }
   if (!ready) {
-    for (const element of [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair]) {
+    for (const element of [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair, els.latenessMode]) {
       element.disabled = true;
     }
     setActiveView("stringline");
@@ -218,6 +223,9 @@ els.trainSearch.addEventListener("input", () => {
 els.odPair.addEventListener("change", () => {
   if (state.records.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
 });
+els.latenessMode.addEventListener("change", () => {
+  if (state.records.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+});
 els.viewTabs.forEach((tab) => tab.addEventListener("click", () => setActiveView(tab.dataset.view)));
 [els.startDate, els.endDate].forEach((input) => input.addEventListener("change", () => {
   updateDateModeControls();
@@ -253,6 +261,9 @@ new ResizeObserver(() => {
 new ResizeObserver(() => {
   if (state.passengerTrips.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
 }).observe(els.histogramWrap);
+new ResizeObserver(() => {
+  if (state.passengerTrips.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+}).observe(els.latenessHistogramWrap);
 
 new ResizeObserver(() => {
   if (state.records.length) drawTrafficHeatmap(els.startDate.value, els.endDate.value);
@@ -310,7 +321,7 @@ async function loadCsvFile(file) {
     els.endDate.max = state.serviceMax;
     els.endDate.value = state.serviceMax;
 
-    [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair].forEach((element) => {
+    [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair, els.latenessMode].forEach((element) => {
       element.disabled = false;
     });
     setDataReady(true);
@@ -478,6 +489,7 @@ function buildPassengerTrips() {
       scheduledMinutes: (scheduledArrivalMs - scheduledDepartureMs) / 60000,
       actualMinutes: (arrival.actualMs - departure.actualMs) / 60000,
       finalLatenessMinutes: arrivalDeviation,
+      departureLatenessMinutes: departureDeviation,
     });
   }
   return trips;
@@ -700,11 +712,15 @@ function generatePassengerHistogram(start, end) {
     els.histogramEmpty.hidden = false;
     els.histogramSubtitle.textContent = "No passenger trips match the selected date range and OD pairs.";
     clearHistogram();
+    clearHistogram(els.latenessCanvas);
+    els.latenessHistogramEmpty.hidden = false;
+    els.latenessHistogramSubtitle.textContent = "No passenger trips match the selected date range and OD pairs.";
     renderLatenessTable([]);
     renderTravelTimeTable([]);
     return;
   }
   drawHistogram(trips);
+  drawLatenessHistogram(trips);
   renderLatenessTable(trips, totalSelected, start, end);
   renderTravelTimeTable(trips);
   const routeCount = routes.size === state.odPairs.length ? "all observed passenger OD pairs" : `${routes.size} selected passenger OD pair${routes.size === 1 ? "" : "s"}`;
@@ -712,8 +728,7 @@ function generatePassengerHistogram(start, end) {
   els.histogramEmpty.hidden = true;
 }
 
-function clearHistogram() {
-  const canvas = els.tripTimeCanvas;
+function clearHistogram(canvas = els.tripTimeCanvas) {
   const rect = canvas.getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
   canvas.width = Math.round(rect.width * Math.min(window.devicePixelRatio || 1, 2));
@@ -721,8 +736,8 @@ function clearHistogram() {
   canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawHistogram(trips) {
-  const canvas = els.tripTimeCanvas;
+function drawHistogram(trips, metric = null) {
+  const canvas = metric ? els.latenessCanvas : els.tripTimeCanvas;
   const rect = canvas.getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -732,15 +747,18 @@ function drawHistogram(trips) {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, rect.width, rect.height);
 
-  const values = [...trips.flatMap((trip) => [trip.scheduledMinutes, trip.actualMinutes])];
+  const values = metric ? trips.map(metric.value) : trips.flatMap((trip) => [trip.scheduledMinutes, trip.actualMinutes]);
   const binWidth = chooseHistogramBinWidth(values);
   const min = Math.floor(Math.min(...values) / binWidth) * binWidth - binWidth;
-  const max = Math.ceil(Math.max(...values) / binWidth) * binWidth + binWidth;
+  const max = (Math.floor(Math.max(...values) / binWidth) + 2) * binWidth;
   const bins = [];
   for (let start = min; start < max || !bins.length; start += binWidth) bins.push({ start, scheduled: 0, actual: 0 });
   for (const trip of trips) {
-    bins[Math.min(bins.length - 1, Math.floor((trip.scheduledMinutes - min) / binWidth))].scheduled += 1;
-    bins[Math.min(bins.length - 1, Math.floor((trip.actualMinutes - min) / binWidth))].actual += 1;
+    if (metric) bins[Math.floor((metric.value(trip) - min) / binWidth)].actual += 1;
+    else {
+      bins[Math.min(bins.length - 1, Math.floor((trip.scheduledMinutes - min) / binWidth))].scheduled += 1;
+      bins[Math.min(bins.length - 1, Math.floor((trip.actualMinutes - min) / binWidth))].actual += 1;
+    }
   }
 
   const margin = { top: 22, right: 20, bottom: 118, left: 58 };
@@ -784,9 +802,9 @@ function drawHistogram(trips) {
     const scheduledHeight = (bin.scheduled / totalTrips * 100 / yMax) * plot.height;
     const actualHeight = (bin.actual / totalTrips * 100 / yMax) * plot.height;
     ctx.fillStyle = "rgba(21, 94, 239, 0.78)";
-    ctx.fillRect(center - barWidth - 1, plot.y + plot.height - scheduledHeight, barWidth, scheduledHeight);
+    if (!metric) ctx.fillRect(center - barWidth - 1, plot.y + plot.height - scheduledHeight, barWidth, scheduledHeight);
     ctx.fillStyle = "rgba(216, 107, 18, 0.78)";
-    ctx.fillRect(center + 1, plot.y + plot.height - actualHeight, barWidth, actualHeight);
+    ctx.fillRect(metric ? center - xStep * 0.4 : center + 1, plot.y + plot.height - actualHeight, metric ? xStep * 0.8 : barWidth, actualHeight);
     {
       ctx.fillStyle = "#475467";
       ctx.textAlign = "right";
@@ -794,7 +812,7 @@ function drawHistogram(trips) {
       ctx.save();
       ctx.translate(center, plot.y + plot.height + 14);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillText(formatMinuteRange(bin.start, binWidth), 0, 0);
+      ctx.fillText(metric ? `${bin.start} to <${bin.start + binWidth} min` : formatMinuteRange(bin.start, binWidth), 0, 0);
       ctx.restore();
     }
   }
@@ -805,12 +823,24 @@ function drawHistogram(trips) {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.font = "700 11px Inter, system-ui, sans-serif";
-  ctx.fillText("TRAVEL TIME", plot.x + plot.width / 2, rect.height - 20);
+  ctx.fillText(metric ? metric.axis : "TRAVEL TIME", plot.x + plot.width / 2, rect.height - 20);
   ctx.save();
   ctx.translate(16, plot.y + plot.height / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText("PERCENT OF TRIPS", 0, 0);
   ctx.restore();
+}
+
+function drawLatenessHistogram(trips) {
+  const modes = {
+    arrival: { value: trip => trip.finalLatenessMinutes, axis: "ARRIVAL LATENESS (MINUTES)", description: "Last-station actual arrival minus reconstructed scheduled arrival; negative = early." },
+    departure: { value: trip => trip.departureLatenessMinutes, axis: "DEPARTURE LATENESS (MINUTES)", description: "First-station actual departure minus reconstructed scheduled departure; negative = early." },
+    travel: { value: trip => trip.actualMinutes - trip.scheduledMinutes, axis: "TRAVEL TIME DIFFERENCE (MINUTES)", description: "Actual travel time minus reconstructed scheduled travel time; negative = shorter." },
+  };
+  const metric = modes[els.latenessMode.value] || modes.arrival;
+  drawHistogram(trips, metric);
+  els.latenessHistogramEmpty.hidden = true;
+  els.latenessHistogramSubtitle.textContent = `${trips.length.toLocaleString()} trips · 10-minute bins · ${metric.description}`;
 }
 
 function chooseHistogramBinWidth(values) {

@@ -29,13 +29,16 @@
             <p id="fileError" class="file-error" role="alert" hidden></p>
           </section>
 
-          <section class="rail-card feature-controls hidden" data-view-controls="stringline">
-            <h2>Time-Distance Diagram</h2>
+          <section class="rail-card" aria-label="Shared date range">
+            <h2>Date Range</h2>
             <div class="rail-section">
-              <p class="section-kicker">Date range</p>
               <label class="field"><span>Service date from</span><input id="startDate" type="date" disabled /></label>
               <label class="field"><span>Service date to</span><input id="endDate" type="date" disabled /></label>
             </div>
+          </section>
+
+          <section class="rail-card feature-controls hidden" data-view-controls="stringline">
+            <h2>Time-Distance Diagram</h2>
             <div class="rail-section">
               <p class="section-kicker">Display</p>
               <label class="field"><span title="Normalized date groups repeated paths across the selected dates. Calendar date preserves each trip chronologically.">Date mode</span><select id="dateMode" disabled><option value="normalized">Normalized date</option><option value="calendar" selected>Calendar date</option></select></label>
@@ -78,6 +81,10 @@
             <section class="histogram-card" aria-label="Passenger trip-time distribution">
               <div class="chart-toolbar"><div><p class="section-kicker">Output</p><h2>Passenger trip-time distribution</h2><p id="histogramSubtitle">Load a CSV and choose passenger origin-destination pairs.</p></div><div class="histogram-legend" aria-label="Histogram legend"><span><i class="histogram-swatch scheduled"></i>Scheduled</span><span><i class="histogram-swatch actual"></i>Actual</span></div></div>
               <div class="histogram-wrap" id="histogramWrap"><canvas id="tripTimeCanvas" role="img" aria-label="Histogram comparing scheduled and actual passenger travel times"></canvas><div class="empty-state" id="histogramEmpty"><strong>No passenger trip-time data</strong><span>Load a CSV and choose one or more passenger origin-destination pairs.</span></div></div>
+            </section>
+            <section class="histogram-card" aria-label="Passenger lateness distribution">
+              <div class="chart-toolbar"><div><h2>Passenger lateness distribution</h2><p id="latenessHistogramSubtitle">Load a CSV and choose passenger origin-destination pairs.</p></div><label class="field"><span>Measure</span><select id="latenessMode" disabled><option value="arrival">Arrival at last station</option><option value="departure">Departure from first station</option><option value="travel">Travel time difference</option></select></label></div>
+              <div class="histogram-wrap" id="latenessHistogramWrap"><canvas id="latenessCanvas" role="img" aria-label="Histogram of passenger lateness in minutes"></canvas><div class="empty-state" id="latenessHistogramEmpty"><strong>No passenger lateness data</strong><span>Load a CSV and choose one or more passenger origin-destination pairs.</span></div></div>
             </section>
             <section class="stats-table-card" aria-label="Final lateness distribution">
               <div class="stats-table-heading"><div><p class="section-kicker">Distribution</p><h2>Final lateness</h2></div><span id="latenessTableSummary">No data</span></div>
