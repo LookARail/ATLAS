@@ -1,5 +1,19 @@
 "use strict";
 
+// Editable display aliases. Source codes remain the internal location keys.
+const STATION_ALIASES = {
+  BROPASSEN: "Brockville passenger station",
+  TORUNION: "Toronto Union Station",
+  MONCENSTA: "Montréal Central Station",
+  COTPASSEN: "Coteau passenger station",
+  STROSJCT: "Sainte-Rosalie Junction",
+};
+
+function stationDisplayName(sourceCode) {
+  const code = normalizeStation(sourceCode);
+  return Object.hasOwn(STATION_ALIASES, code) ? STATION_ALIASES[code] : code;
+}
+
 // Sourced from the manually maintained cn_locations_mileage.csv.
 // Locations with blank mileage are intentionally absent and are not plotted.
 const STATION_POSITIONS = {
@@ -685,7 +699,8 @@ function populateOdPairs() {
   els.odPair.replaceChildren(...state.odPairs.map((pair) => {
     const option = document.createElement("option");
     option.value = pair.value;
-    option.textContent = `${pair.origin} → ${pair.destination} (${pair.count.toLocaleString()})`;
+    option.textContent = `${stationDisplayName(pair.origin)} → ${stationDisplayName(pair.destination)} (${pair.count.toLocaleString()})`;
+    option.title = `${pair.origin} → ${pair.destination}`;
     return option;
   }));
 
@@ -896,7 +911,7 @@ function renderTravelTimeTable(trips) {
   const grouped = new Map();
   for (const trip of trips) {
     const key = `${trip.routeKey}|${trip.serviceName}`;
-    if (!grouped.has(key)) grouped.set(key, { serviceName: trip.serviceName, route: `${trip.origin} → ${trip.destination}`, actual: [], scheduled: [], lateness: [] });
+    if (!grouped.has(key)) grouped.set(key, { serviceName: trip.serviceName, route: `${stationDisplayName(trip.origin)} → ${stationDisplayName(trip.destination)}`, actual: [], scheduled: [], lateness: [] });
     const group = grouped.get(key);
     group.actual.push(trip.actualMinutes);
     group.scheduled.push(trip.scheduledMinutes);
@@ -1375,7 +1390,7 @@ function handleHover(event) {
     state.hoveredTripKey = groupKey;
     if (state.renderModel) drawChart(state.renderModel);
   }
-  els.tooltip.innerHTML = `<strong>${escapeHtml(variant.displayName)}</strong>${escapeHtml(nearest.from.station)} → ${escapeHtml(nearest.to.station)}<br>${variant.repeatCount} matching occurrence${variant.repeatCount === 1 ? "" : "s"} · ${escapeHtml(variant.direction || "direction unknown")}`;
+  els.tooltip.innerHTML = `<strong>${escapeHtml(variant.displayName)}</strong>${escapeHtml(stationDisplayName(nearest.from.station))} → ${escapeHtml(stationDisplayName(nearest.to.station))}<br>${variant.repeatCount} matching occurrence${variant.repeatCount === 1 ? "" : "s"} · ${escapeHtml(variant.direction || "direction unknown")}`;
   els.tooltip.hidden = false;
   const tooltipRect = els.tooltip.getBoundingClientRect();
   els.tooltip.style.left = `${Math.min(x + 12, rect.width - tooltipRect.width - 8)}px`;
@@ -1549,6 +1564,7 @@ function formatDisplayDate(isoDate) {
 }
 
 function shortStation(station, compact) {
+  if (Object.hasOwn(STATION_ALIASES, station)) return stationDisplayName(station);
   const names = {
     MONTASYAR: compact ? "MTL" : "MONTASYAR",
     BROCKVILL: compact ? "BRO" : "BROCKVILL",
