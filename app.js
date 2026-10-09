@@ -14,9 +14,15 @@ function stationDisplayName(sourceCode) {
   return Object.hasOwn(STATION_ALIASES, code) ? STATION_ALIASES[code] : code;
 }
 
-// Sourced from the manually maintained cn_locations_mileage.csv.
+// Sourced from cn_locations_mileage.csv and confirmed location updates.
 // Locations with blank mileage are intentionally absent and are not plotted.
 const STATION_POSITIONS = {
+  MONCENSTA: 0,
+  TORUNION: 334,
+  BROPASSEN: 125.7,
+  COTPASSEN: 37.8,
+  GUILDWOOD: 321.2,
+  CAPE: 73.1,
   MONMONINT: 74,
   MONTASYAR: 8.9,
   PONVICTOR: 72.31,
@@ -74,6 +80,8 @@ const STATION_POSITIONS = {
 };
 
 const STATION_SUBDIVISIONS = {
+  MONCENSTA: "Kingston", TORUNION: "Kingston", BROPASSEN: "Kingston",
+  COTPASSEN: "Kingston", GUILDWOOD: "Kingston", CAPE: "St-Hyacinthe",
   MONMONINT: "St-Hyacinthe", PONVICTOR: "St-Hyacinthe", STLAMBERT: "St-Hyacinthe", STBRUNO: "St-Hyacinthe",
   DAVIS: "St-Hyacinthe", THERIAULT: "St-Hyacinthe", STROSJCT: "St-Hyacinthe", STHYACINT: "St-Hyacinthe",
   STHUBERT: "St-Hyacinthe", VILLEMOYN: "St-Hyacinthe",
