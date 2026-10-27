@@ -50,19 +50,22 @@
           </section>
 
           <section class="rail-card feature-controls hidden" data-view-controls="statistics">
-            <h2>Passenger Statistics</h2>
+            <h2>Statistics</h2>
+            <div class="rail-section">
+              <label class="field"><span>Train population</span><select id="statisticsPopulation" disabled><option value="passenger" selected>Passenger only</option><option value="nonPassenger">Non-passenger only</option><option value="both">Both</option></select></label>
+            </div>
             <div class="rail-section">
               <p class="section-kicker">Origin → destination</p>
-              <label class="field"><span title="Select one or more observed passenger origin-destination pairs. Hold Ctrl or Cmd to select multiple pairs.">Observed passenger OD pairs</span><select id="odPair" multiple size="6" disabled aria-describedby="odPairNote"></select><small id="odPairNote">Ctrl/Cmd-click to choose multiple pairs.</small></label>
+              <label class="field"><span title="Select one or more observed origin-destination pairs. Hold Ctrl or Cmd to select multiple pairs.">Observed OD pairs</span><select id="odPair" multiple size="6" disabled aria-describedby="odPairNote"></select><small id="odPairNote">Ctrl/Cmd-click to choose multiple pairs.</small></label>
             </div>
-            <p class="rail-note" title="The histogram uses passenger trips only. Scheduled travel time is reconstructed from the actual event time and signed schedule deviation.">Passenger-only trip-time distributions.</p>
+            <p class="rail-note" title="Scheduled times are reconstructed from actual event times and signed schedule deviation.">Travel-time and lateness distributions.</p>
           </section>
         </aside>
 
         <section class="workspace" id="workspace" aria-label="Analysis workspace" hidden>
           <nav class="view-tabs" role="tablist" aria-label="Analysis views">
             <button class="view-tab active" id="stringlineTab" type="button" role="tab" aria-selected="true" aria-controls="stringlinePanel" data-view="stringline">Time-distance Diagram</button>
-            <button class="view-tab" id="statisticsTab" type="button" role="tab" aria-selected="false" aria-controls="statisticsPanel" data-view="statistics">Passenger Statistics</button>
+            <button class="view-tab" id="statisticsTab" type="button" role="tab" aria-selected="false" aria-controls="statisticsPanel" data-view="statistics">Statistics</button>
           </nav>
 
           <section class="view-panel" id="stringlinePanel" data-view-panel="stringline" role="tabpanel" aria-labelledby="stringlineTab">
@@ -78,21 +81,21 @@
           </section>
 
           <section class="view-panel" id="statisticsPanel" data-view-panel="statistics" role="tabpanel" aria-labelledby="statisticsTab" hidden>
-            <section class="histogram-card" aria-label="Passenger trip-time distribution">
-              <div class="chart-toolbar"><div><p class="section-kicker">Output</p><h2>Passenger trip-time distribution</h2><p id="histogramSubtitle">Load a CSV and choose passenger origin-destination pairs.</p></div><div class="histogram-legend" aria-label="Histogram legend"><span><i class="histogram-swatch scheduled"></i>Scheduled</span><span><i class="histogram-swatch actual"></i>Actual</span></div></div>
-              <div class="histogram-wrap" id="histogramWrap"><canvas id="tripTimeCanvas" role="img" aria-label="Histogram comparing scheduled and actual passenger travel times"></canvas><div class="empty-state" id="histogramEmpty"><strong>No passenger trip-time data</strong><span>Load a CSV and choose one or more passenger origin-destination pairs.</span></div></div>
+            <section class="histogram-card" aria-label="Train trip-time distribution">
+              <div class="chart-toolbar"><div><p class="section-kicker">Output</p><h2>Trip-time distribution</h2><p id="histogramSubtitle">Load a CSV and choose origin-destination pairs.</p></div><div class="histogram-legend" aria-label="Histogram legend"><span><i class="histogram-swatch scheduled"></i>Scheduled</span><span><i class="histogram-swatch actual"></i>Actual</span></div></div>
+              <div class="histogram-wrap" id="histogramWrap"><canvas id="tripTimeCanvas" role="img" aria-label="Histogram comparing scheduled and actual train travel times"></canvas><div class="empty-state" id="histogramEmpty"><strong>No trip-time data</strong><span>Load a CSV and choose one or more origin-destination pairs.</span></div></div>
             </section>
-            <section class="histogram-card" aria-label="Passenger lateness distribution">
-              <div class="chart-toolbar"><div><h2>Passenger lateness distribution</h2><p id="latenessHistogramSubtitle">Load a CSV and choose passenger origin-destination pairs.</p></div><label class="field"><span>Measure</span><select id="latenessMode" disabled><option value="arrival">Arrival at last station</option><option value="departure">Departure from first station</option><option value="travel">Travel time difference</option></select></label></div>
-              <div class="histogram-wrap" id="latenessHistogramWrap"><canvas id="latenessCanvas" role="img" aria-label="Histogram of passenger lateness in minutes"></canvas><div class="empty-state" id="latenessHistogramEmpty"><strong>No passenger lateness data</strong><span>Load a CSV and choose one or more passenger origin-destination pairs.</span></div></div>
+            <section class="histogram-card" aria-label="Train lateness distribution">
+              <div class="chart-toolbar"><div><h2>Lateness distribution</h2><p id="latenessHistogramSubtitle">Load a CSV and choose origin-destination pairs.</p></div><label class="field"><span>Measure</span><select id="latenessMode" disabled><option value="arrival">Arrival at last station</option><option value="departure">Departure from first station</option><option value="travel">Travel time difference</option></select></label></div>
+              <div class="histogram-wrap" id="latenessHistogramWrap"><canvas id="latenessCanvas" role="img" aria-label="Histogram of train lateness in minutes"></canvas><div class="empty-state" id="latenessHistogramEmpty"><strong>No lateness data</strong><span>Load a CSV and choose one or more origin-destination pairs.</span></div></div>
             </section>
             <section class="stats-table-card" aria-label="Final lateness distribution">
               <div class="stats-table-heading"><div><p class="section-kicker">Distribution</p><h2>Final lateness</h2></div><span id="latenessTableSummary">No data</span></div>
               <div class="table-scroll"><table class="stats-table"><thead><tr><th scope="col">Final lateness</th><th scope="col">Trips</th><th scope="col">Share</th></tr></thead><tbody id="latenessTableBody"></tbody></table></div>
             </section>
-            <section class="stats-table-card" aria-label="Passenger travel-time variability">
+            <section class="stats-table-card" aria-label="Train travel-time variability">
               <div class="stats-table-heading"><div><p class="section-kicker">Travel time variability</p><h2>Actual travel time distribution</h2></div><span id="travelTimeSummary">No data</span></div>
-              <div class="table-scroll"><table class="stats-table"><thead><tr><th scope="col">Passenger trip</th><th scope="col">Origin–destination</th><th scope="col">Observations</th><th scope="col">Actual P5</th><th scope="col">Actual median</th><th scope="col">Actual P95</th><th scope="col">Actual standard deviation</th><th scope="col">Average scheduled</th><th scope="col">Average lateness</th></tr></thead><tbody id="travelTimeTableBody"></tbody></table></div>
+              <div class="table-scroll"><table class="stats-table"><thead><tr><th scope="col">Train trip</th><th scope="col">Origin–destination</th><th scope="col">Observations</th><th scope="col">Actual P5</th><th scope="col">Actual median</th><th scope="col">Actual P95</th><th scope="col">Actual standard deviation</th><th scope="col">Average scheduled</th><th scope="col">Average lateness</th></tr></thead><tbody id="travelTimeTableBody"></tbody></table></div>
             </section>
           </section>
 

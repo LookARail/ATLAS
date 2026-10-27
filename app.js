@@ -135,6 +135,7 @@ const els = {
   heatmapWrap: document.querySelector("#heatmapWrap"),
   heatmapEmpty: document.querySelector("#heatmapEmpty"),
   odPair: document.querySelector("#odPair"),
+  statisticsPopulation: document.querySelector("#statisticsPopulation"),
   dateMode: document.querySelector("#dateMode"),
   viewTabs: [...document.querySelectorAll(".view-tab")],
   viewPanels: [...document.querySelectorAll("[data-view-panel]")],
@@ -170,7 +171,8 @@ const state = {
   serviceMax: null,
   renderModel: null,
   hitSegments: [],
-  passengerTrips: [],
+  statisticsTrips: [],
+  statisticsPopulation: "passenger",
   odPairs: [],
   hoveredTripKey: null,
   subdivision: "Kingston",
@@ -191,7 +193,7 @@ function setDataReady(ready) {
     tab.setAttribute("aria-disabled", String(!ready));
   }
   if (!ready) {
-    for (const element of [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair, els.latenessMode]) {
+    for (const element of [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair, els.statisticsPopulation, els.latenessMode]) {
       element.disabled = true;
     }
     setActiveView("stringline");
@@ -243,16 +245,22 @@ els.trainSearch.addEventListener("input", () => {
   if (state.renderModel) drawChart(state.renderModel);
 });
 els.odPair.addEventListener("change", () => {
-  if (state.records.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+  if (state.records.length) generateStatistics(els.startDate.value, els.endDate.value);
+});
+els.statisticsPopulation.addEventListener("change", () => {
+  state.statisticsPopulation = els.statisticsPopulation.value;
+  state.statisticsTrips = buildStatisticsTrips(state.statisticsPopulation);
+  populateOdPairs();
+  if (state.records.length) generateStatistics(els.startDate.value, els.endDate.value);
 });
 els.latenessMode.addEventListener("change", () => {
-  if (state.records.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+  if (state.records.length) generateStatistics(els.startDate.value, els.endDate.value);
 });
 els.viewTabs.forEach((tab) => tab.addEventListener("click", () => setActiveView(tab.dataset.view)));
 [els.startDate, els.endDate].forEach((input) => input.addEventListener("change", () => {
   updateDateModeControls();
   if (state.records.length) {
-    generatePassengerHistogram(els.startDate.value, els.endDate.value);
+    generateStatistics(els.startDate.value, els.endDate.value);
     drawTrafficHeatmap(els.startDate.value, els.endDate.value);
   }
 }));
@@ -281,10 +289,10 @@ new ResizeObserver(() => {
 }).observe(els.chartWrap);
 
 new ResizeObserver(() => {
-  if (state.passengerTrips.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+  if (state.statisticsTrips.length) generateStatistics(els.startDate.value, els.endDate.value);
 }).observe(els.histogramWrap);
 new ResizeObserver(() => {
-  if (state.passengerTrips.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+  if (state.statisticsTrips.length) generateStatistics(els.startDate.value, els.endDate.value);
 }).observe(els.latenessHistogramWrap);
 
 new ResizeObserver(() => {
@@ -299,7 +307,7 @@ function setActiveView(view) {
   }
   for (const panel of els.viewPanels) panel.hidden = panel.dataset.viewPanel !== view;
   for (const controls of els.viewControls) controls.classList.toggle("hidden", controls.dataset.viewControls !== view);
-  if (view === "statistics" && state.records.length) generatePassengerHistogram(els.startDate.value, els.endDate.value);
+  if (view === "statistics" && state.records.length) generateStatistics(els.startDate.value, els.endDate.value);
 }
 
 function updateDateModeControls() {
@@ -324,7 +332,8 @@ async function loadCsvFile(file) {
     validateColumns(["TRN_ID", "EVT_TMSTMP", "STN_333"]);
 
     state.records = parsed.slice(1).filter((row) => row.some((value) => value !== ""));
-    state.passengerTrips = buildPassengerTrips();
+    state.statisticsPopulation = els.statisticsPopulation.value;
+    state.statisticsTrips = buildStatisticsTrips(state.statisticsPopulation);
     populateOdPairs();
     const serviceDates = state.records
       .map((row) => getServiceDate(row))
@@ -343,7 +352,7 @@ async function loadCsvFile(file) {
     els.endDate.max = state.serviceMax;
     els.endDate.value = state.serviceMax;
 
-    [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair, els.latenessMode].forEach((element) => {
+    [els.startDate, els.endDate, els.dateMode, els.subdivisionFilter, els.timeBasis, els.trainSearch, els.plotButton, els.odPair, els.statisticsPopulation, els.latenessMode].forEach((element) => {
       element.disabled = false;
     });
     setDataReady(true);
@@ -462,7 +471,7 @@ function generatePlot() {
     renderLegend(compareBoth ? [...actualVariants, ...scheduledVariants] : variants);
     drawChart(model);
     drawTrafficHeatmap(start, end);
-    generatePassengerHistogram(start, end);
+    generateStatistics(start, end);
     setStatus(`${variants.length.toLocaleString()} ${calendarMode || ungroupedActual ? "trips" : "paths"} plotted`, "ready");
   } catch (error) {
     console.error(error);
@@ -471,10 +480,12 @@ function generatePlot() {
   }
 }
 
-function buildPassengerTrips() {
+function buildStatisticsTrips(population = "passenger") {
   const grouped = new Map();
   for (const row of state.records) {
-    if (getTrainType(row) !== "P") continue;
+    const isPassenger = getTrainType(row) === "P";
+    if (population === "passenger" && !isPassenger) continue;
+    if (population === "nonPassenger" && isPassenger) continue;
     const tripId = value(row, "TRN_ID").trim();
     if (!tripId) continue;
     if (!grouped.has(tripId)) grouped.set(tripId, []);
@@ -695,8 +706,9 @@ function signedDeviationMinutes(row) {
 }
 
 function populateOdPairs() {
+  const previouslySelected = new Set([...els.odPair.selectedOptions].map((option) => option.value));
   const counts = new Map();
-  for (const trip of state.passengerTrips) counts.set(trip.routeKey, (counts.get(trip.routeKey) || 0) + 1);
+  for (const trip of state.statisticsTrips) counts.set(trip.routeKey, (counts.get(trip.routeKey) || 0) + 1);
   state.odPairs = [...counts.entries()]
     .map(([valueRaw, count]) => {
       const [origin, destination] = valueRaw.split("|");
@@ -716,7 +728,8 @@ function populateOdPairs() {
     (pair.origin === "DORVAL" && pair.destination === "LIVERPOOL") ||
     (pair.origin === "LIVERPOOL" && pair.destination === "DORVAL"),
   );
-  const selected = preferred.length ? preferred : state.odPairs;
+  const retained = state.odPairs.filter((pair) => previouslySelected.has(pair.value));
+  const selected = retained.length ? retained : preferred.length ? preferred : state.odPairs;
   for (const option of els.odPair.options) option.selected = selected.some((pair) => pair.value === option.value);
 }
 
@@ -725,19 +738,20 @@ function selectedOdPairs() {
   return new Set(selected.length ? selected : state.odPairs.map((pair) => pair.value));
 }
 
-function generatePassengerHistogram(start, end) {
+function generateStatistics(start, end) {
   const routes = selectedOdPairs();
-  const totalSelected = state.passengerTrips.filter((trip) => routes.has(trip.routeKey)).length;
-  const trips = state.passengerTrips.filter((trip) =>
+  const totalSelected = state.statisticsTrips.filter((trip) => routes.has(trip.routeKey)).length;
+  const trips = state.statisticsTrips.filter((trip) =>
     trip.serviceDate && trip.serviceDate >= start && trip.serviceDate <= end && routes.has(trip.routeKey),
   );
   if (!trips.length) {
+    const populationLabel = getStatisticsPopulationLabel();
     els.histogramEmpty.hidden = false;
-    els.histogramSubtitle.textContent = "No passenger trips match the selected date range and OD pairs.";
+    els.histogramSubtitle.textContent = `No ${populationLabel.toLowerCase()} trips match the selected date range and OD pairs.`;
     clearHistogram();
     clearHistogram(els.latenessCanvas);
     els.latenessHistogramEmpty.hidden = false;
-    els.latenessHistogramSubtitle.textContent = "No passenger trips match the selected date range and OD pairs.";
+    els.latenessHistogramSubtitle.textContent = `No ${populationLabel.toLowerCase()} trips match the selected date range and OD pairs.`;
     renderLatenessTable([]);
     renderTravelTimeTable([]);
     return;
@@ -746,9 +760,15 @@ function generatePassengerHistogram(start, end) {
   drawLatenessHistogram(trips);
   renderLatenessTable(trips, totalSelected, start, end);
   renderTravelTimeTable(trips);
-  const routeCount = routes.size === state.odPairs.length ? "all observed passenger OD pairs" : `${routes.size} selected passenger OD pair${routes.size === 1 ? "" : "s"}`;
-  els.histogramSubtitle.textContent = `${trips.length.toLocaleString()} of ${totalSelected.toLocaleString()} selected trips · ${routeCount} · ${formatDisplayDate(start)}–${formatDisplayDate(end)} · 10-minute bins`;
+  const routeCount = routes.size === state.odPairs.length ? "all observed OD pairs" : `${routes.size} selected OD pair${routes.size === 1 ? "" : "s"}`;
+  els.histogramSubtitle.textContent = `${getStatisticsPopulationLabel()} · ${trips.length.toLocaleString()} of ${totalSelected.toLocaleString()} selected trips · ${routeCount} · ${formatDisplayDate(start)}–${formatDisplayDate(end)} · 10-minute bins`;
   els.histogramEmpty.hidden = true;
+}
+
+function getStatisticsPopulationLabel() {
+  if (state.statisticsPopulation === "nonPassenger") return "Non-passenger trips";
+  if (state.statisticsPopulation === "both") return "Passenger and non-passenger trips";
+  return "Passenger trips";
 }
 
 function clearHistogram(canvas = els.tripTimeCanvas) {
@@ -863,7 +883,7 @@ function drawLatenessHistogram(trips) {
   const metric = modes[els.latenessMode.value] || modes.arrival;
   drawHistogram(trips, metric);
   els.latenessHistogramEmpty.hidden = true;
-  els.latenessHistogramSubtitle.textContent = `${trips.length.toLocaleString()} trips · 10-minute bins · ${metric.description}`;
+  els.latenessHistogramSubtitle.textContent = `${getStatisticsPopulationLabel()} · ${trips.length.toLocaleString()} trips · 10-minute bins · ${metric.description}`;
 }
 
 function chooseHistogramBinWidth(values) {
@@ -940,7 +960,7 @@ function renderTravelTimeTable(trips) {
     row.innerHTML = `<th scope="row">${group.serviceName}</th><td>${group.route}</td><td>${actual.length.toLocaleString()}</td><td>${formatMinutes(percentile(actual, 0.05))}</td><td>${formatMinutes(percentile(actual, 0.5))}</td><td>${formatMinutes(percentile(actual, 0.95))}</td><td>${actual.length > 1 ? formatMinutes(standardDeviation(actual)) : "—"}</td><td>${formatMinutes(average(group.scheduled))}</td><td>${formatSignedMinutes(average(group.lateness))}</td>`;
     return row;
   }));
-  els.travelTimeSummary.textContent = `${rows.length.toLocaleString()} passenger services · ${trips.length.toLocaleString()} observations`;
+  els.travelTimeSummary.textContent = `${rows.length.toLocaleString()} train services · ${trips.length.toLocaleString()} observations`;
 }
 
 function average(values) {
