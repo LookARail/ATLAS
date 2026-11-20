@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schematic Replay</title>
+<link rel="stylesheet" href="replay.css">
+<script defer src="model-loader.js"></script>
+<script defer src="replay.js"></script>
+</head>
+<body>
+
+<div id="stage" class="stage">
+  <svg id="map" role="img" aria-label="Railway schematic" preserveAspectRatio="xMidYMid meet"></svg>
+</div>
+
+<!-- Model + filters -->
+<section class="card brand" aria-label="Model and filters">
+  <div class="brand-row">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 17h18M7 7l10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>
+    <div class="brand-text">
+      <h1>Schematic Replay</h1>
+      <p id="modelName">No model loaded</p>
+    </div>
+    <button id="openBtn" class="icon-btn" type="button" title="Open another model" aria-label="Open another model">
+      <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    </button>
+  </div>
+  <div id="filters" class="filters" hidden>
+    <div id="scope" class="seg" role="group" aria-label="Trains">
+      <button type="button" data-v="all" aria-pressed="true">All</button>
+      <button type="button" data-v="via" aria-pressed="false"><i class="dot via"></i>VIA</button>
+      <button type="button" data-v="freight" aria-pressed="false"><i class="dot frt"></i>Freight</button>
+    </div>
+    <label class="select"><span class="sr">Subdivision</span>
+      <select id="area" aria-label="Subdivision"><option value="all">Entire model</option></select>
+    </label>
+  </div>
+</section>
+
+<!-- Map controls -->
+<nav class="controls" aria-label="Map controls">
+  <div class="card ctl-group">
+    <button id="zoomIn" class="icon-btn" type="button" title="Zoom in (+)" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button id="zoomOut" class="icon-btn" type="button" title="Zoom out (−)" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+  </div>
+  <div class="card ctl-group">
+    <button id="fit" class="icon-btn" type="button" title="Fit network (F)" aria-label="Fit network"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="infoBtn" class="icon-btn" type="button" title="Legend and model details" aria-label="Legend and model details" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
+  </div>
+</nav>
+
+<!-- Legend / details -->
+<aside id="info" class="card info" hidden aria-label="Legend and model details">
+  <h2>Legend</h2>
+  <ul class="legend">
+    <li><i class="ln trk"></i>Track</li>
+    <li><i class="ln xo"></i>Crossover / turnout</li>
+    <li><i class="dot via"></i>VIA</li>
+    <li><i class="dot frt"></i>Freight / other</li>
+    <li><i class="ln route"></i>Selected train path</li>
+  </ul>
+  <div id="modelInfo" hidden>
+    <h2>Model</h2>
+    <dl id="stats" class="stats"></dl>
+    <ul id="checks" class="checks"></ul>
+  </div>
+  <h2>Keys</h2>
+  <dl class="keys">
+    <dt><kbd>Space</kbd></dt><dd>Play / pause</dd>
+    <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Step 1 min (<kbd>Shift</kbd> 10 min)</dd>
+    <dt><kbd>F</kbd></dt><dd>Fit network</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Clear selection</dd>
+  </dl>
+  <p class="foot">Positions between recorded nodes are interpolated. Files are read in this browser only.</p>
+</aside>
+
+<!-- Empty state -->
+<section id="empty" class="card empty">
+  <button id="emptyClose" class="icon-btn sm empty-close" type="button" title="Close" aria-label="Close" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div class="drop-art" aria-hidden="true">
+    <svg viewBox="0 0 120 48"><path d="M4 16h112M4 32h112M30 16l24 16M66 32l24-16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="42" cy="16" r="5" class="a"/><circle cx="88" cy="32" r="5" class="b"/></svg>
+  </div>
+  <h2>Open an RTC model</h2>
+  <p>Drag the model folder here, or select its four files</p>
+  <ul id="slots" class="slots" aria-label="Model files">
+    <li data-ext="NODE"><i></i>.NODE</li>
+    <li data-ext="LINK"><i></i>.LINK</li>
+    <li data-ext="HISTORY"><i></i>.HISTORY</li>
+    <li data-ext="ROUTE"><i></i>.ROUTE</li>
+  </ul>
+  <div class="empty-actions">
+    <button id="pickFiles" class="btn primary" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
+      Select model files
+    </button>
+  </div>
+  <p class="hint">In the dialog, press <kbd>Ctrl</kbd> <kbd>A</kbd> to pick all four at once</p>
+  <p id="loadStatus" class="load-status" role="status"></p>
+</section>
+
+<!-- Selected train -->
+<section id="trainCard" class="card train-card" hidden aria-live="polite">
+  <div class="tc-head">
+    <span id="tcKind" class="pill"></span>
+    <strong id="tcSymbol"></strong>
+    <button id="tcFollow" class="icon-btn sm" type="button" title="Follow train" aria-label="Follow train" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+    <button id="tcClose" class="icon-btn sm" type="button" title="Close (Esc)" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div id="tcStatus" class="tc-status"></div>
+  <div id="tcSub" class="tc-sub"></div>
+  <div class="tc-bar"><i id="tcProgress"></i></div>
+  <div class="tc-span"><span id="tcStart"></span><span id="tcEnd"></span></div>
+</section>
+
+<!-- Replay dock -->
+<section id="dock" class="card dock" hidden aria-label="Replay">
+  <button id="play" class="play" type="button" title="Play (Space)" aria-label="Play">
+    <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+    <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+  </button>
+  <div class="clock"><span id="clockDay">Day 0</span><strong id="clockTime">00:00:00</strong></div>
+  <div class="scrub">
+    <canvas id="density" aria-hidden="true"></canvas>
+    <input id="time" type="range" min="0" max="1" value="0" step="1" aria-label="Replay time">
+    <div class="range"><span id="start"></span><span id="end"></span></div>
+  </div>
+  <div id="speed" class="seg speed" role="group" aria-label="Playback speed">
+    <button type="button" data-v="60" aria-pressed="false" title="1 minute per second">1m</button>
+    <button type="button" data-v="300" aria-pressed="true" title="5 minutes per second">5m</button>
+    <button type="button" data-v="900" aria-pressed="false" title="15 minutes per second">15m</button>
+    <button type="button" data-v="3600" aria-pressed="false" title="1 hour per second">1h</button>
+  </div>
+  <div class="counts">
+    <span id="countVia" title="VIA trains on map"><i class="dot via"></i><b>0</b></span>
+    <span id="countFrt" title="Freight / other trains on map"><i class="dot frt"></i><b>0</b></span>
+    <span id="countMissing" class="warn" hidden><b>0</b></span>
+  </div>
+</section>
+
+<div id="tip" class="tip" hidden></div>
+<div id="toast" class="toast" role="alert" hidden></div>
+
+<input id="files" type="file" multiple accept=".node,.link,.history,.route" hidden>
+</body>
+</html>
